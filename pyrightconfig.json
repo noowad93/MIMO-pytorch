@@ -1,5 +1,5 @@
 {
-  "include": ["pack"],
+  "include": ["mimo"],
   "venvPath": "env",
 
   "reportUnknownVariableType": true,
