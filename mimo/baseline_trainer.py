@@ -1,3 +1,4 @@
+from typing import Union, List
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -7,7 +8,7 @@ from mimo.config import Config
 from torch.optim.lr_scheduler import StepLR
 
 
-class Trainer:
+class BaselineTrainer:
     def __init__(
         self,
         config: Config,

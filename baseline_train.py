@@ -2,8 +2,8 @@ from torchvision import datasets, transforms
 import torch
 from torch.utils.data import DataLoader
 from mimo.config import Config
-from mimo.model import Net
-from mimo.trainer import Trainer
+from mimo.model import BaselineModel
+from mimo.baseline_trainer import BaselineTrainer
 
 
 def main():
@@ -20,8 +20,8 @@ def main():
         test_dataset, batch_size=config.batch_size, num_workers=config.num_workers, pin_memory=True
     )
 
-    model = Net().to(device)
-    trainer = Trainer(config, model, train_dataloader, test_dataloader, device)
+    model = BaselineModel().to(device)
+    trainer = BaselineTrainer(config, model, train_dataloader, test_dataloader, device)
     trainer.train()
 
 
