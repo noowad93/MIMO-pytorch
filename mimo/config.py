@@ -22,3 +22,8 @@ class Config(NamedTuple):
     train_log_interval: int = 100
     valid_log_interval: int = 1000
     save_interval: int = 1000
+
+    """
+    MIMO Hyperparameters
+    """
+    ensemble_num: int = 3
