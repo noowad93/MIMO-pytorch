@@ -2,19 +2,26 @@
 
 PyTorch implementation of MIMO proposed in [Training independent subnetworks for robust prediction](https://openreview.net/forum?id=OGg9XnKxFAH).
 
-# Usage
-
-## Baseline Model Training
+# Model Training
 
 ``` sh
-python baseline_train.py
+python train.py
 ```
 
-## MIMO Model Training
+# Results
 
-``` sh
-python mimo_train.py
-```
+For convenience, I trained small CNN-based models on MNIST for 10 epochs.
+Note that the result below is not thoroughly verified.
+
+## Valid set Accuracy
+
+| The number of subnetworks (M) | Valid Set Accuracy |
+| -------------| ---------- |
+| 1 (Baseline) | 99.19%     |
+| 2            | 99.27%     |
+| 3            | 99.21%     |
+| 4            | 99.26%     |
+| 5            | 99.17%     |
 
 # References
 
