@@ -8,37 +8,40 @@ from mimo.config import Config
 from torch.optim.lr_scheduler import StepLR
 
 
-class BaselineTrainer:
+class MIMOTrainer:
     def __init__(
         self,
         config: Config,
         model: nn.Module,
-        train_dataloader: DataLoader,
+        train_dataloaders: List[DataLoader],
         test_dataloader: DataLoader,
         device: torch.device,
     ):
         self.config = config
         self.model = model
-        self.train_dataloader = train_dataloader
-        self.test_dataloader = test_dataloader
+        self.train_dataloaders:List[DataLoader] = train_dataloaders
+        self.test_dataloader:DataLoader = test_dataloader
 
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=config.learning_rate)
         self.scheduler = StepLR(self.optimizer, step_size=1, gamma=config.gamma)
 
         self.device = device
 
+
     def train(self):
         self.model.to(self.device)
         self.model.train()
         global_step = 0
         for epoch in range(1, self.config.num_epochs + 1):
-            for data, target in self.train_dataloader:
-                data, target = data.to(self.device), target.to(self.device)
+            for datum in zip(*self.train_dataloaders):
+                model_inputs = torch.stack([data[0] for data in datum]).to(self.device)
+                targets = torch.stack([data[1] for data in datum]).to(self.device)
 
                 self.optimizer.zero_grad()
-                output = self.model(data)
-                loss = F.nll_loss(output, target)
+                outputs = self.model(model_inputs)
+                loss = F.nll_loss(outputs.transpose(2,1), targets)
                 loss.backward()
+
                 self.optimizer.step()
 
                 global_step += 1
@@ -52,11 +55,14 @@ class BaselineTrainer:
         test_loss = 0
         correct = 0
         with torch.no_grad():
-            for data, target in self.test_dataloader:
-                data, target = data.to(self.device), target.to(self.device)
-                output = self.model(data)
-                test_loss += F.nll_loss(output, target, reduction="sum").item()  # sum up batch loss
-                pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            for data in self.test_dataloader:
+                model_inputs = torch.stack([data[0]]*self.config.ensemble_num).to(self.device)
+                target = data[1].to(self.device)
+
+                outputs = self.model(model_inputs)
+                output = torch.mean(outputs,axis=0)
+                test_loss += F.nll_loss(output, target, reduction="sum").item()
+                pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
         test_loss /= len(self.test_dataloader.dataset)
