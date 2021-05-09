@@ -1,6 +1,6 @@
 # MIMO-pytorch
 
-* PyTorch implementation of MIMO proposed in [ICLR 2021 paper](Training independent subnetworks for robust prediction).
+PyTorch implementation of MIMO proposed in [Training independent subnetworks for robust prediction](https://openreview.net/forum?id=OGg9XnKxFAH).
 
 # Usage
 
