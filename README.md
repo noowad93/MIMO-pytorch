@@ -8,10 +8,15 @@ PyTorch implementation of MIMO proposed in [Training independent subnetworks for
 python train.py
 ```
 
-# Results
+# Experimental Results
 
-For convenience, I trained small CNN-based models on MNIST for 10 epochs.
+For convenience, I trained small CNN-based models on MNIST for 10 epochs unlike the original paper.
 Note that the result below is not thoroughly verified.
+If you want to make some significant results, belows will be helpful:
+
+1. Tune some hyperparameters.
+2. Use harder datasets like imagenet or CIFAR-10 like the original paper.
+3. Check the test set performance.
 
 ## Valid set Accuracy
 
