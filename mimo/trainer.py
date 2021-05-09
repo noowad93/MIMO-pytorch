@@ -1,11 +1,13 @@
-from typing import Union, List
-import torch.nn as nn
+from typing import List
+
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 import torch.optim as optim
-from mimo.config import Config
 from torch.optim.lr_scheduler import StepLR
+from torch.utils.data import DataLoader
+
+from mimo.config import Config
 
 
 class MIMOTrainer:
@@ -19,14 +21,13 @@ class MIMOTrainer:
     ):
         self.config = config
         self.model = model
-        self.train_dataloaders:List[DataLoader] = train_dataloaders
-        self.test_dataloader:DataLoader = test_dataloader
+        self.train_dataloaders: List[DataLoader] = train_dataloaders
+        self.test_dataloader: DataLoader = test_dataloader
 
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=config.learning_rate)
         self.scheduler = StepLR(self.optimizer, step_size=1, gamma=config.gamma)
 
         self.device = device
-
 
     def train(self):
         self.model.to(self.device)
@@ -39,7 +40,7 @@ class MIMOTrainer:
 
                 self.optimizer.zero_grad()
                 outputs = self.model(model_inputs)
-                loss = F.nll_loss(outputs.transpose(2,1), targets)
+                loss = F.nll_loss(outputs.transpose(2, 1), targets)
                 loss.backward()
 
                 self.optimizer.step()
@@ -56,11 +57,11 @@ class MIMOTrainer:
         correct = 0
         with torch.no_grad():
             for data in self.test_dataloader:
-                model_inputs = torch.stack([data[0]]*self.config.ensemble_num).to(self.device)
+                model_inputs = torch.stack([data[0]] * self.config.ensemble_num).to(self.device)
                 target = data[1].to(self.device)
 
                 outputs = self.model(model_inputs)
-                output = torch.mean(outputs,axis=0)
+                output = torch.mean(outputs, axis=0)
                 test_loss += F.nll_loss(output, target, reduction="sum").item()
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()

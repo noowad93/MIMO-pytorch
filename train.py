@@ -1,10 +1,12 @@
-from torchvision import datasets, transforms
+from argparse import ArgumentParser
+
 import torch
 from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
 from mimo.config import Config
 from mimo.model import MIMOModel
 from mimo.trainer import MIMOTrainer
-from argparse import ArgumentParser
 
 parser = ArgumentParser("MIMO Training")
 parser.add_argument("--ensemble-num", type=int, default=3)
@@ -24,8 +26,9 @@ def main(args):
         )
         for _ in range(config.ensemble_num)
     ]
-    test_dataloader = DataLoader(test_dataset, batch_size=config.batch_size, num_workers=config.num_workers, pin_memory=True)
-
+    test_dataloader = DataLoader(
+        test_dataset, batch_size=config.batch_size, num_workers=config.num_workers, pin_memory=True
+    )
 
     model = MIMOModel(config.ensemble_num).to(device)
     trainer = MIMOTrainer(config, model, train_dataloaders, test_dataloader, device)
