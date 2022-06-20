@@ -8,20 +8,25 @@ class MIMOModel(nn.Module):
         super(MIMOModel, self).__init__()
         self.cnn_layer = CNNLayer()
         self.ensemble_num = ensemble_num
+        # use single linear layer of (10-way classification tasks * ensemble_num) output size to simplify computational operation
         self.last_head = nn.Linear(128, 10 * ensemble_num)
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
-        input_shape_list = list(input_tensor.size())  # (ensemble_num,batch_size,1,28,28)
+        input_shape_list = list(input_tensor.size())  # (ensemble_num, batch_size, 1, 28, 28)
         ensemble_num, batch_size = input_shape_list[0], input_shape_list[1]
         assert ensemble_num == self.ensemble_num
 
-        input_tensor = input_tensor.view([ensemble_num * batch_size] + input_shape_list[2:])
-        output = self.cnn_layer(input_tensor)
-        output = output.view(ensemble_num, batch_size, -1)
-        output = self.last_head(output)
-        output = output.view(ensemble_num, batch_size, ensemble_num, -1)
-        output = torch.diagonal(output, offset=0, dim1=0, dim2=2).permute(2, 0, 1)
-        output = F.log_softmax(output, dim=-1)
+        # combine ensemble_num dim and batch dim to simplify computational operation
+        input_tensor = input_tensor.view([ensemble_num * batch_size] + input_shape_list[2:]) # (ensemble_num * batch_size, 1, 28, 28)
+
+         # usual model forward
+        output = self.cnn_layer(input_tensor) # (ensemble_num * batch_size, 128)
+        # decompose ensemble_num dim and batch dim
+        output = output.view(ensemble_num, batch_size, -1) # (ensemble_num, batch_size, 128)
+        output = self.last_head(output) # (ensemble_num, batch_size, 50)
+        output = output.view(ensemble_num, batch_size, ensemble_num, -1) # (ensemble_num, batch_size, ensemble_num, 10)
+        output = torch.diagonal(output, offset=0, dim1=0, dim2=2).permute(2, 0, 1) # (ensemble_num, batch_size, 10)
+        output = F.log_softmax(output, dim=-1) # (ensemble_num, batch_size, 10)
         return output
 
 
