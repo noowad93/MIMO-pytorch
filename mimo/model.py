@@ -4,51 +4,41 @@ import torch.nn.functional as F
 
 
 class MIMOModel(nn.Module):
-    def __init__(self, ensemble_num: int = 3):
+    def __init__(self, hidden_dim: int = 784, ensemble_num: int = 3):
         super(MIMOModel, self).__init__()
-        self.cnn_layer = CNNLayer()
+        self.input_layer = nn.Linear(hidden_dim, hidden_dim * ensemble_num)
+        self.backbone_model = BackboneModel(hidden_dim, ensemble_num)
         self.ensemble_num = ensemble_num
-        # use single linear layer of (10-way classification tasks * ensemble_num) output size to simplify computational operation
-        self.last_head = nn.Linear(128, 10 * ensemble_num)
+        self.output_layer = nn.Linear(128, 10 * ensemble_num)
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
-        input_shape_list = list(input_tensor.size())  # (ensemble_num, batch_size, 1, 28, 28)
-        ensemble_num, batch_size = input_shape_list[0], input_shape_list[1]
-        assert ensemble_num == self.ensemble_num
+        ensemble_num, batch_size, *_ = list(input_tensor.size())
+        input_tensor = input_tensor.transpose(1, 0).view(
+            batch_size, ensemble_num, -1
+        )  # (batch_size, ensemble_num, hidden_dim)
+        input_tensor = self.input_layer(input_tensor)  # (batch_size, ensemble_num, hidden_dim * ensemble_num)
 
-        # combine ensemble_num dim and batch dim to simplify computational operation
-        input_tensor = input_tensor.view([ensemble_num * batch_size] + input_shape_list[2:]) # (ensemble_num * batch_size, 1, 28, 28)
-
-         # usual model forward
-        output = self.cnn_layer(input_tensor) # (ensemble_num * batch_size, 128)
-        # decompose ensemble_num dim and batch dim
-        output = output.view(ensemble_num, batch_size, -1) # (ensemble_num, batch_size, 128)
-        output = self.last_head(output) # (ensemble_num, batch_size, 50)
-        output = output.view(ensemble_num, batch_size, ensemble_num, -1) # (ensemble_num, batch_size, ensemble_num, 10)
-        output = torch.diagonal(output, offset=0, dim1=0, dim2=2).permute(2, 0, 1) # (ensemble_num, batch_size, 10)
-        output = F.log_softmax(output, dim=-1) # (ensemble_num, batch_size, 10)
+        # usual model forward
+        output = self.backbone_model(input_tensor)  # (batch_size, ensemble_num, 128)
+        output = self.output_layer(output)  # (batch_size, ensemble_num, 10 * ensemble_num)
+        output = output.reshape(
+            batch_size, ensemble_num, -1, ensemble_num
+        )  # (batch_size, ensemble_num, 10, ensemble_num)
+        output = torch.diagonal(output, offset=0, dim1=1, dim2=3).transpose(2, 1)  # (batch_size, ensemble_num, 10)
+        output = F.log_softmax(output, dim=-1)  # (batch_size, ensemble_num, 10)
         return output
 
 
-# from https://github.com/pytorch/examples/blob/master/mnist/main.py
-class CNNLayer(nn.Module):
-    def __init__(self):
-        super(CNNLayer, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout(0.25)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(9216, 128)
+class BackboneModel(nn.Module):
+    def __init__(self, hidden_dim: int, ensemble_num: int):
+        super(BackboneModel, self).__init__()
+        self.l1 = nn.Linear(hidden_dim * ensemble_num, 256)
+        self.l2 = nn.Linear(256, 128)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.conv1(x)
+        x = self.l1(x)
         x = F.relu(x)
-        x = self.conv2(x)
+        x = F.dropout(x, p=0.1)
+        x = self.l2(x)
         x = F.relu(x)
-        x = F.max_pool2d(x, 2)
-        x = self.dropout1(x)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.dropout2(x)
         return x

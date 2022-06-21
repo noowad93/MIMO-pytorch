@@ -25,7 +25,7 @@ class MIMOTrainer:
         self.test_dataloader: DataLoader = test_dataloader
 
         self.optimizer = optim.Adadelta(self.model.parameters(), lr=config.learning_rate)
-        self.scheduler = StepLR(self.optimizer, step_size=1, gamma=config.gamma)
+        self.scheduler = StepLR(self.optimizer, step_size=len(self.train_dataloaders[0]), gamma=config.gamma)
 
         self.device = device
 
@@ -38,12 +38,16 @@ class MIMOTrainer:
                 model_inputs = torch.stack([data[0] for data in datum]).to(self.device)
                 targets = torch.stack([data[1] for data in datum]).to(self.device)
 
+                ensemble_num, batch_size = list(targets.size())
                 self.optimizer.zero_grad()
                 outputs = self.model(model_inputs)
-                loss = F.nll_loss(outputs.transpose(2, 1), targets)
+                loss = F.nll_loss(
+                    outputs.reshape(ensemble_num * batch_size, -1), targets.reshape(ensemble_num * batch_size)
+                )
                 loss.backward()
 
                 self.optimizer.step()
+                self.scheduler.step()
 
                 global_step += 1
                 if global_step != 0 and global_step % self.config.train_log_interval == 0:
@@ -61,9 +65,10 @@ class MIMOTrainer:
                 target = data[1].to(self.device)
 
                 outputs = self.model(model_inputs)
-                output = torch.mean(outputs, axis=0)
+                output = torch.mean(outputs, axis=1)
+
                 test_loss += F.nll_loss(output, target, reduction="sum").item()
-                pred = output.argmax(dim=1, keepdim=True)
+                pred = output.argmax(dim=-1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
         test_loss /= len(self.test_dataloader.dataset)

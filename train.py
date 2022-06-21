@@ -21,16 +21,12 @@ def main(args):
     test_dataset = datasets.MNIST("../data", train=False, transform=transform)
 
     train_dataloaders = [
-        DataLoader(
-            train_dataset, batch_size=config.batch_size, num_workers=config.num_workers, pin_memory=True, shuffle=True
-        )
+        DataLoader(train_dataset, batch_size=config.batch_size, num_workers=config.num_workers, shuffle=True)
         for _ in range(config.ensemble_num)
     ]
-    test_dataloader = DataLoader(
-        test_dataset, batch_size=config.batch_size, num_workers=config.num_workers, pin_memory=True
-    )
+    test_dataloader = DataLoader(test_dataset, batch_size=config.batch_size, num_workers=config.num_workers)
 
-    model = MIMOModel(config.ensemble_num).to(device)
+    model = MIMOModel(ensemble_num=config.ensemble_num).to(device)
     trainer = MIMOTrainer(config, model, train_dataloaders, test_dataloader, device)
     trainer.train()
 
