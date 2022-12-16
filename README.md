@@ -1,4 +1,4 @@
-# MIMO-pytorch
+# MIMO-pytorch (WIP)
 
 PyTorch implementation of MIMO proposed in [Training independent subnetworks for robust prediction](https://openreview.net/forum?id=OGg9XnKxFAH).
 
